@@ -18,4 +18,3 @@ obj.data.status=1
 
 console.log(JSON.stringify(obj));
 $done({body: JSON.stringify(obj)})
-
