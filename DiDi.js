@@ -58,7 +58,7 @@ const TokenName = '滴滴出行'
 const TokenKey = 'DiDi'
 const CityKey = 'DiDi_city'
 const reg = /^https:\/\/as\.xiaojukeji\.com\/ep\/as\/toggles\?.*city=(\d*)&.*ticket=(.*)&/
-const source_id = ['WTZs7tfSPrADJ8uLRVMOKA%253D%253D']
+const source_id = ['YAg4TxCrm6iRwrzlzLQ8LA%253D%253D']
 const today = new Date().getFullYear() + "-" + ("00" + Number(new Date().getMonth() + 1)).substr(-2) + "-" + ("00" + new Date().getDate()).substr(-2)
 const $cmp = compatibility()
 
