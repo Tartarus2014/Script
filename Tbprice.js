@@ -3,10 +3,10 @@ README：https://github.com/yichahucha/surge/tree/master
  */
 
 const $tool = new Tool()
-const path1 = "/amdc/mobileDispatch"
-const path2 = "/gw/mtop.taobao.detail.getdetail"
 const consoleLog = false
 const url = $request.url
+const path1 = "/amdc/mobileDispatch"
+const path2 = "/gw/mtop.taobao.detail.getdetail"
 
 if (url.indexOf(path1) != -1) {
     if ($tool.isResponse) {
@@ -50,144 +50,52 @@ if (url.indexOf(path1) != -1) {
 
 if (url.indexOf(path2) != -1) {
     const body = $response.body
-    let obj = JSON.parse(body)
+    $done({ body })
+    const obj = JSON.parse(body)
     let item = obj.data.item
     let shareUrl = `https://item.taobao.com/item.htm?id=${item.itemId}`
     requestPrice(shareUrl, function (data) {
         if (data) {
-            if (obj.data.apiStack) {
-                let apiStack = obj.data.apiStack[0]
-                let value = JSON.parse(apiStack.value)
-                let tradeConsumerProtection = null
-                let consumerProtection = null
-                let trade = null
-                let vertical = null
-                if (value.global) {
-                    tradeConsumerProtection = value.global.data.tradeConsumerProtection
-                    consumerProtection = value.global.data.consumerProtection
-                    trade = value.global.data.trade
-                    vertical = value.global.data.vertical
-                } else {
-                    tradeConsumerProtection = value.tradeConsumerProtection
-                    consumerProtection = value.consumerProtection
-                    trade = value.trade
-                    vertical = value.vertical
-                }
-                if (trade && trade.useWap == "true") {
-                    $done({ body })
-                    sendNotify(data, shareUrl)
-                } else {
-                    if (vertical && vertical.hasOwnProperty("tmallhkDirectSale")) {
-                        // if (value.global) {
-                        //     value.global.data["tradeConsumerProtection"] = customTradeConsumerProtection()
-                        //     value.global.data.tradeConsumerProtection = setTradeConsumerProtection(data, value.global.data.tradeConsumerProtection)
-                        // } else {
-                        //     value["tradeConsumerProtection"] = customTradeConsumerProtection()
-                        //     value.tradeConsumerProtection = setTradeConsumerProtection(data, value.tradeConsumerProtection)
-                        // }
-                        $done({ body })
-                        sendNotify(data, shareUrl)
-                    } else if (tradeConsumerProtection) {
-                        tradeConsumerProtection = setTradeConsumerProtection(data, tradeConsumerProtection)
-                    } else {
-                        consumerProtection = setConsumerProtection(data, consumerProtection)
-                    }
-                    apiStack.value = JSON.stringify(value)
-                    $done({ body: JSON.stringify(obj) })
-                }
-            } else {
-                $done({ body })
-                sendNotify(data, shareUrl)
+            if (data.ok == 1 && data.single) {
+                const lower = lowerMsgs(data.single)
+                const detail = priceSummary(data)
+                const tip = data.PriceRemark.Tip
+                $tool.notify("", "", `${lower}\n${tip}${detail}`)
             }
-        } else {
-            $done({ body })
+            if (data.ok == 0 && data.msg.length > 0) {
+                $tool.notify("", "", `⚠️ ${data.msg}`)
+            }
         }
     })
-}
-
-function sendNotify(data, shareUrl) {
-    if (data.ok == 1 && data.single) {
-        const lower = lowerMsgs(data.single)[0]
-        const detail = priceSummary(data)[1]
-        const tip = data.PriceRemark.Tip + "（仅供参考）"
-        $tool.notify("", "", `〽️历史${lower} ${tip}\n${detail}\n\n👉查看详情：http://tool.manmanbuy.com/historyLowest.aspx?url=${encodeURI(shareUrl)}`)
-    }
-    if (data.ok == 0 && data.msg.length > 0) {
-        $tool.notify("", "", `⚠️ ${data.msg}`)
-    }
-}
-
-function setConsumerProtection(data, consumerProtection) {
-    let basicService = consumerProtection.serviceProtection.basicService
-    let items = consumerProtection.items
-    if (data.ok == 1 && data.single) {
-        const lower = lowerMsgs(data.single)
-        const tip = data.PriceRemark.Tip
-        const summary = priceSummary(data)[1]
-        const item = customItem(lower[1], [`${lower[0]} ${tip}（仅供参考）\n${summary}`])
-        basicService.services.unshift(item)
-        items.unshift(item)
-    }
-    if (data.ok == 0 && data.msg.length > 0) {
-        let item = customItem("暂无历史价格", [data.msg])
-        basicService.services.unshift(item)
-        items.unshift(item)
-    }
-    return consumerProtection
-}
-
-function setTradeConsumerProtection(data, tradeConsumerProtection) {
-    let service = tradeConsumerProtection.tradeConsumerService.service
-    if (data.ok == 1 && data.single) {
-        const lower = lowerMsgs(data.single)
-        const tip = data.PriceRemark.Tip
-        const tbitems = priceSummary(data)[0]
-        const item = customItem(lower[1], `${lower[0]} ${tip}（仅供参考）`)
-        let nonService = tradeConsumerProtection.tradeConsumerService.nonService
-        service.items = service.items.concat(nonService.items)
-        nonService.title = "价格详情"
-        nonService.items = tbitems
-        service.items.unshift(item)
-    }
-    if (data.ok == 0 && data.msg.length > 0) {
-        service.items.unshift(customItem("暂无历史价格", data.msg))
-    }
-    return tradeConsumerProtection
 }
 
 function lowerMsgs(data) {
     const lower = data.lowerPriceyh
     const lowerDate = dateFormat(data.lowerDateyh)
-    const lowerMsg = "最低到手价：¥" + String(lower) + `（${lowerDate}）`
-    const lowerMsg1 = "历史最低¥" + String(lower)
-    return [lowerMsg, lowerMsg1]
+    const lowerMsg = "🍵 历史最低到手价：¥" + String(lower) + ` (${lowerDate}) `
+    return lowerMsg
 }
 
 function priceSummary(data) {
-    let tbitems = []
     let summary = ""
-    let listPriceDetail = data.PriceRemark.ListPriceDetail
-    listPriceDetail.pop()
+    let listPriceDetail = data.PriceRemark.ListPriceDetail.slice(0,4)
     let list = listPriceDetail.concat(historySummary(data.single))
     list.forEach((item, index) => {
         if (item.Name == "双11价格") {
             item.Name = "双十一价格"
         } else if (item.Name == "618价格") {
             item.Name = "六一八价格"
-        } else if (item.Name == "30天最低价") {
-            item.Name = "三十天最低"
         }
-        summary += `\n${item.Name}${getSpace(4)}${item.Price}${getSpace(4)}${item.Date}${getSpace(4)}${item.Difference}`
-        let summaryItem = `${item.Name}${getSpace(4)}${item.Price}${getSpace(4)}${item.Date}${getSpace(4)}${item.Difference}`
-        tbitems.push(customItem(summaryItem))
+        let price = String(parseInt(item.Price.substr(1)));
+        summary += `\n${item.Name}   ${isNaN(price) ? "-" : "¥" + price}   ${item.Date}   ${item.Difference}`
     })
-    return [tbitems, summary]
+    return summary
 }
 
 function historySummary(single) {
     const rexMatch = /\[.*?\]/g;
     const rexExec = /\[(.*),(.*),"(.*)".*\]/;
-    let currentPrice, lowest60, lowest180, lowest360
+    let currentPrice, lowest30, lowest90, lowest180, lowest360
     let list = single.jiagequshiyh.match(rexMatch);
     list = list.reverse().slice(0, 360);
     list.forEach((item, index) => {
@@ -198,23 +106,30 @@ function historySummary(single) {
             let price = parseFloat(result[2]);
             if (index == 0) {
                 currentPrice = price
-                lowest60 = { Name: "六十天最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
+                lowest30 = { Name: "三十天最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
+                lowest90 = { Name: "九十天最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
                 lowest180 = { Name: "一百八最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
                 lowest360 = { Name: "三百六最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
             }
-            if (index < 60 && price <= lowest60.price) {
-                lowest60.price = price
-                lowest60.Price = `¥${String(price)}`
-                lowest60.Date = date
-                lowest60.Difference = difference(currentPrice, price)
+            if (index < 30 && price < lowest30.price) {
+                lowest30.price = price
+                lowest30.Price = `¥${String(price)}`
+                lowest30.Date = date
+                lowest30.Difference = difference(currentPrice, price)
             }
-            if (index < 180 && price <= lowest180.price) {
+            if (index < 90 && price < lowest90.price) {
+                lowest90.price = price
+                lowest90.Price = `¥${String(price)}`
+                lowest90.Date = date
+                lowest90.Difference = difference(currentPrice, price)
+            }
+            if (index < 180 && price < lowest180.price) {
                 lowest180.price = price
                 lowest180.Price = `¥${String(price)}`
                 lowest180.Date = date
                 lowest180.Difference = difference(currentPrice, price)
             }
-            if (index < 360 && price <= lowest360.price) {
+            if (index < 360 && price < lowest360.price) {
                 lowest360.price = price
                 lowest360.Price = `¥${String(price)}`
                 lowest360.Date = date
@@ -222,7 +137,7 @@ function historySummary(single) {
             }
         }
     });
-    return [lowest60, lowest180, lowest360];
+    return [lowest30, lowest90, lowest180];
 }
 
 function difference(currentPrice, price) {
@@ -230,7 +145,7 @@ function difference(currentPrice, price) {
     if (difference == 0) {
         return "-"
     } else {
-        return `${difference > 0 ? "↑" : "↓"}${String(difference)}`
+        return `${difference > 0 ? "↑" : "↓"}${String(Math.abs(difference))}`
     }
 }
 
@@ -273,44 +188,6 @@ function dateFormat(cellval) {
     const month = date.getMonth() + 1 < 10 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1;
     const currentDate = date.getDate() < 10 ? "0" + date.getDate() : date.getDate();
     return date.getFullYear() + "-" + month + "-" + currentDate;
-}
-
-function getSpace(length) {
-    let blank = "";
-    for (let index = 0; index < length; index++) {
-        blank += " ";
-    }
-    return blank;
-}
-
-function customItem(title, desc) {
-    return {
-        icon: "https://s2.ax1x.com/2020/02/16/3STeIJ.png",
-        title: title,
-        name: title,
-        desc: desc
-    }
-}
-
-function customTradeConsumerProtection() {
-    return {
-        "tradeConsumerService": {
-            "service": {
-                "items": [
-                ],
-                "icon": "",
-                "title": "基础服务"
-            },
-            "nonService": {
-                "items": [
-                ],
-                "title": "其他"
-            }
-        },
-        "passValue": "all",
-        "url": "https://h5.m.taobao.com/app/detailsubpage/consumer/index.js",
-        "type": "0"
-    }
 }
 
 function Qs2Json(url) {
