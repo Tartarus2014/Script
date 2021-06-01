@@ -1,10 +1,13 @@
 /*
 README：https://github.com/yichahucha/surge/tree/master
+^https?://api\.m\.jd\.com/(client\.action|api)\?functionId=(wareBusiness|serverConfig|basicConfig|lite_wareBusiness|pingou_item)
  */
 
 const path1 = "serverConfig";
 const path2 = "wareBusiness";
+const path2h = "wareBusiness.style";
 const path3 = "basicConfig";
+const path4 = "pingou_item";
 const consolelog = false;
 const url = $request.url;
 const body = $response.body;
@@ -21,74 +24,68 @@ if (url.indexOf(path1) != -1) {
 if (url.indexOf(path3) != -1) {
     let obj = JSON.parse(body);
     let JDHttpToolKit = obj.data.JDHttpToolKit;
+    let jCommandConfig = obj.data.jCommandConfig;
     if (JDHttpToolKit) {
         delete obj.data.JDHttpToolKit.httpdns;
         delete obj.data.JDHttpToolKit.dnsvipV6;
     }
-    $done({ body: JSON.stringify(obj) }); $done({ body });
+    if (jCommandConfig) {
+		delete obj.data.jCommandConfig.httpdnsConfig;
+	}
+    $done({ body: JSON.stringify(obj) });
 }
 
-if (url.indexOf(path2) != -1) {
+if (url.indexOf(path2) != -1 || url.indexOf(path4) != -1) {
+    if (!$tool.isQuanX) {
+        $done({ body });
+    }
     let obj = JSON.parse(body);
     const floors = obj.floors;
     const commodity_info = floors[floors.length - 1];
-    const shareUrl = commodity_info.data.property.shareUrl;
+    const others = obj.others;
+	const domain = obj.domain;
+	const shareUrl =
+		url.indexOf(path4) != -1
+			? domain.h5Url
+			: url.indexOf(path2h) != -1
+			? others.property.shareUrl
+			: commodity_info.data.property.shareUrl;
     request_history_price(shareUrl, function (data) {
         if (data) {
-            const lowerword = adword_obj();
-            lowerword.data.ad.textColor = "#fe0000";
-            let bestIndex = 0;
-            for (let index = 0; index < floors.length; index++) {
-                const element = floors[index];
-                if (element.mId == lowerword.mId) {
-                    bestIndex = index + 1;
-                    break;
-                } else {
-                    if (element.sortId > lowerword.sortId) {
-                        bestIndex = index;
-                        break;
-                    }
-                }
-            }
             if (data.ok == 1 && data.single) {
                 const lower = lowerMsgs(data.single)
                 const detail = priceSummary(data)
-                const tip = data.PriceRemark.Tip + "（仅供参考）"
-                lowerword.data.ad.adword = `${lower} ${tip}\n${detail}`;
-                floors.insert(bestIndex, lowerword);
+                const tip = data.PriceRemark.Tip
+                $tool.notify("", "", `${lower}\n${tip}${detail}`)
             }
             if (data.ok == 0 && data.msg.length > 0) {
-                lowerword.data.ad.adword = "⚠️ " + data.msg;
-                floors.insert(bestIndex, lowerword);
+                $tool.notify("", "", `⚠️ ${data.msg}`)
             }
-            $done({ body: JSON.stringify(obj) });
-        } else {
-            $done({ body });
         }
+        $done({ body });
     })
 }
 
 function lowerMsgs(data) {
     const lower = data.lowerPriceyh
     const lowerDate = dateFormat(data.lowerDateyh)
-    const lowerMsg = "〽️历史最低到手价：¥" + String(lower) + ` (${lowerDate}) `
+    const lowerMsg = "🍵 历史最低到手价：¥" + String(lower) + ` (${lowerDate}) `
     return lowerMsg
 }
 
+
 function priceSummary(data) {
     let summary = ""
-    let listPriceDetail = data.PriceRemark.ListPriceDetail
-    listPriceDetail.pop()
+    let listPriceDetail = data.PriceRemark.ListPriceDetail.slice(0,4)
     let list = listPriceDetail.concat(historySummary(data.single))
     list.forEach((item, index) => {
         if (item.Name == "双11价格") {
             item.Name = "双十一价格"
         } else if (item.Name == "618价格") {
             item.Name = "六一八价格"
-        } else if (item.Name == "30天最低价") {
-            item.Name = "三十天最低"
         }
-        summary += `\n${item.Name}${getSpace(8)}${item.Price}${getSpace(8)}${item.Date}${getSpace(8)}${item.Difference}`
+        let price = String(parseInt(item.Price.substr(1)));
+        summary += `\n${item.Name}   ${isNaN(price) ? "-" : "¥" + price}   ${item.Date}   ${item.Difference}`
     })
     return summary
 }
@@ -96,7 +93,7 @@ function priceSummary(data) {
 function historySummary(single) {
     const rexMatch = /\[.*?\]/g;
     const rexExec = /\[(.*),(.*),"(.*)".*\]/;
-    let currentPrice, lowest60, lowest180, lowest360
+    let currentPrice, lowest30, lowest90, lowest180, lowest360
     let list = single.jiagequshiyh.match(rexMatch);
     list = list.reverse().slice(0, 360);
     list.forEach((item, index) => {
@@ -107,23 +104,30 @@ function historySummary(single) {
             let price = parseFloat(result[2]);
             if (index == 0) {
                 currentPrice = price
-                lowest60 = { Name: "六十天最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
+                lowest30 = { Name: "三十天最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
+                lowest90 = { Name: "九十天最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
                 lowest180 = { Name: "一百八最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
                 lowest360 = { Name: "三百六最低", Price: `¥${String(price)}`, Date: date, Difference: difference(currentPrice, price), price }
             }
-            if (index < 60 && price <= lowest60.price) {
-                lowest60.price = price
-                lowest60.Price = `¥${String(price)}`
-                lowest60.Date = date
-                lowest60.Difference = difference(currentPrice, price)
+            if (index < 30 && price < lowest30.price) {
+                lowest30.price = price
+                lowest30.Price = `¥${String(price)}`
+                lowest30.Date = date
+                lowest30.Difference = difference(currentPrice, price)
             }
-            if (index < 180 && price <= lowest180.price) {
+            if (index < 90 && price < lowest90.price) {
+                lowest90.price = price
+                lowest90.Price = `¥${String(price)}`
+                lowest90.Date = date
+                lowest90.Difference = difference(currentPrice, price)
+            }
+            if (index < 180 && price < lowest180.price) {
                 lowest180.price = price
                 lowest180.Price = `¥${String(price)}`
                 lowest180.Date = date
                 lowest180.Difference = difference(currentPrice, price)
             }
-            if (index < 360 && price <= lowest360.price) {
+            if (index < 360 && price < lowest360.price) {
                 lowest360.price = price
                 lowest360.Price = `¥${String(price)}`
                 lowest360.Date = date
@@ -131,7 +135,7 @@ function historySummary(single) {
             }
         }
     });
-    return [lowest60, lowest180, lowest360];
+    return [lowest30, lowest90, lowest180];
 }
 
 function difference(currentPrice, price) {
@@ -139,7 +143,7 @@ function difference(currentPrice, price) {
     if (difference == 0) {
         return "-"
     } else {
-        return `${difference > 0 ? "↑" : "↓"}${String(difference)}`
+        return `${difference > 0 ? "↑" : "↓"}${String(Math.abs(difference))}`
     }
 }
 
@@ -184,43 +188,9 @@ function dateFormat(cellval) {
     return date.getFullYear() + "-" + month + "-" + currentDate;
 }
 
-function getSpace(length) {
-    let blank = "";
-    for (let index = 0; index < length; index++) {
-        blank += " ";
-    }
-    return blank;
-}
-
-function adword_obj() {
-    return {
-        "bId": "eCustom_flo_199",
-        "cf": {
-            "bgc": "#ffffff",
-            "spl": "empty"
-        },
-        "data": {
-            "ad": {
-                "adword": "",
-                "textColor": "#8C8C8C",
-                "color": "#f23030",
-                "newALContent": true,
-                "hasFold": true,
-                "class": "com.jd.app.server.warecoresoa.domain.AdWordInfo.AdWordInfo",
-                "adLinkContent": "",
-                "adLink": ""
-            }
-        },
-        "mId": "bpAdword",
-        "refId": "eAdword_0000000028",
-        "sortId": 13
-    }
-}
-
 function tool() {
     const isSurge = typeof $httpClient != "undefined"
     const isQuanX = typeof $task != "undefined"
-    const isResponse = typeof $response != "undefined"
     const node = (() => {
         if (typeof require == "function") {
             const request = require('request')
@@ -234,21 +204,19 @@ function tool() {
         if (isSurge) $notification.post(title, subtitle, message)
         if (node) console.log(JSON.stringify({ title, subtitle, message }));
     }
-    const write = (value, key) => {
+    const setCache = (value, key) => {
         if (isQuanX) return $prefs.setValueForKey(value, key)
         if (isSurge) return $persistentStore.write(value, key)
     }
-    const read = (key) => {
+    const getCache = (key) => {
         if (isQuanX) return $prefs.valueForKey(key)
         if (isSurge) return $persistentStore.read(key)
     }
     const adapterStatus = (response) => {
-        if (response) {
-            if (response.status) {
-                response["statusCode"] = response.status
-            } else if (response.statusCode) {
-                response["status"] = response.statusCode
-            }
+        if (response.status) {
+            response["statusCode"] = response.status
+        } else if (response.statusCode) {
+            response["status"] = response.statusCode
         }
         return response
     }
@@ -288,7 +256,7 @@ function tool() {
             })
         }
     }
-    return { isQuanX, isSurge, isResponse, notify, write, read, get, post }
+    return { isQuanX, isSurge, notify, setCache, getCache, get, post }
 }
 
 Array.prototype.insert = function (index, item) {
@@ -323,3 +291,6 @@ Date.prototype.format = function (fmt) {
     }
     return fmt;
 }
+
+
+ return `${difference > 0 ? "↑" : "↓"}${String(Math.abs(difference))}`
