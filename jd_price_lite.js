@@ -11,14 +11,14 @@ const path4 = "pingou_item";
 const consolelog = false;
 const url = $request.url;
 const body = $response.body;
-const $nobyda = nobyda();
+const $tool = tool();
 
-let cookie = $nobyda.getCache("jfCookie") || "";
-let cscheme = $nobyda.getCache("jfChooseScheme") || "jd"; // "jx","js","jk" 京东、京喜、京东极速版、京东健康
-let jsapp = [true, "true"].includes($nobyda.getCache("jfusejsapp")) || false; // 对极速版是否也跳转 app，注意即使跳转 app，也需要先加入购物车返回再结账，否则无法使用极速版优惠券
-let browser = $nobyda.getCache("chooseBrowser") || "Safari";
-let jfAutoScheme = $nobyda.getCache("jfAutoScheme"); // 本地不使用 BoxJs 可自行更改 let jfAutoScheme = true / false
-let jfConvert = $nobyda.getCache("jfUseConvert");
+let cookie = $tool.getCache("jfCookie") || "";
+let cscheme = $tool.getCache("jfChooseScheme") || "jd"; // "jx","js","jk" 京东、京喜、京东极速版、京东健康
+let jsapp = [true, "true"].includes($tool.getCache("jfusejsapp")) || false; // 对极速版是否也跳转 app，注意即使跳转 app，也需要先加入购物车返回再结账，否则无法使用极速版优惠券
+let browser = $tool.getCache("chooseBrowser") || "Safari";
+let jfAutoScheme = $tool.getCache("jfAutoScheme"); // 本地不使用 BoxJs 可自行更改 let jfAutoScheme = true / false
+let jfConvert = $tool.getCache("jfUseConvert");
 
 let chooseScheme;
 let chooseBrowser;
@@ -49,15 +49,15 @@ switch (browser) {
         chooseBrowser = "Alook://";
         break;
     default:
-        chooseBrowser = $nobyda.getCache("jfDIYScheme");
+        chooseBrowser = $tool.getCache("jfDIYScheme");
 }
 const autoChoose = jfAutoScheme == undefined ? true : [true, "true"].includes(jfAutoScheme);
 const useConvert = jfAutoScheme == undefined ? true : [true, "true"].includes(jfConvert);
 let autoScheme;
 let cookiesArr = [
-    $nobyda.getCache("CookieJD"),
-    $nobyda.getCache("CookieJD2"),
-    ...cookieParse($nobyda.getCache("CookiesJD") || "[]").map((item) => item.cookie),
+    $tool.getCache("CookieJD"),
+    $tool.getCache("CookieJD2"),
+    ...cookieParse($tool.getCache("CookiesJD") || "[]").map((item) => item.cookie),
 ].filter((item) => !!item);
 
 function cookieParse(str) {
@@ -97,7 +97,7 @@ if (url.indexOf(path3) != -1) {
 }
 
 if (url.indexOf(path2) != -1 || url.indexOf(path4) != -1) {
-    if (!$nobyda.isQuanX) {
+    if (!$tool.isQuanX) {
         $done({ body });
     }
     let obj = JSON.parse(body);
@@ -135,9 +135,7 @@ if (url.indexOf(path2) != -1 || url.indexOf(path4) != -1) {
                 msg += detail[0];
             }
             let oprnUrl = detail[1].convertURL ? detail[1].convertURL : "";
-            $nobyda.notify("", "", msg, {
-        'media-url': $nobyda.headUrl || 'https://cdn.jsdelivr.net/gh/NobyDa/mini@master/Color/jd.png'
-      });
+            $tool.notify("", "", msg, oprnUrl);
         })
         .finally(() => {
             $done({ body });
@@ -278,7 +276,7 @@ function request_history_price(share_url) {
             },
             body: "methodName=getHistoryTrend&p_url=" + encodeURIComponent(share_url),
         };
-        $nobyda.post(options, function (error, response, data) {
+        $tool.post(options, function (error, response, data) {
             if (!error) {
                 data = JSON.parse(data);
                 if (consolelog) console.log("Data:\n" + data);
@@ -306,7 +304,7 @@ function request_history_price(share_url) {
 function convert(url, isOriginJXURL) {
     return new Promise((resolve) => {
         if (!cookie) {
-            $nobyda.setCache("false", "jfUseConvert");
+            $tool.setCache("false", "jfUseConvert");
             resolve("");
         } else {
             let id;
@@ -354,7 +352,7 @@ function convert(url, isOriginJXURL) {
                     "content-type": "application/json",
                 },
             };
-            $nobyda.get(options, function (err, resp, data) {
+            $tool.get(options, function (err, resp, data) {
                 if (!err) {
                     data = JSON.parse(data);
                     console.log("JD Convert Data:\n" + data);
@@ -379,7 +377,7 @@ function convert(url, isOriginJXURL) {
                         if (autoScheme == "openapp.jdpingou") resolve("useJXOrigin");
                         else resolve("");
                     } else if (data.code === 430) {
-                        $nobyda.setCache("false", "jfUseConvert");
+                        $tool.setCache("false", "jfUseConvert");
                         resolve("");
                     } else {
                         resolve(JSON.stringify(data));
@@ -400,72 +398,52 @@ function dateFormat(cellval) {
     return date.getFullYear() + "-" + month + "-" + currentDate;
 }
 
-function nobyda() {
-  const start = Date.now()
-  const isRequest = typeof $request != "undefined"
-  const isSurge = typeof $httpClient != "undefined"
-  const isQuanX = typeof $task != "undefined"
-  const isLoon = typeof $loon != "undefined"
-  const isJSBox = typeof $app != "undefined" && typeof $http != "undefined"
-  const isNode = typeof require == "function" && !isJSBox;
-  const NodeSet = 'CookieSet.json'
-  const node = (() => {
-    if (isNode) {
-      const request = require('request');
-      const fs = require("fs");
-      return ({
-        request,
-        fs
-      })
-    } else {
-      return (null)
-    }
-  })()
-    const notify = (title, subtitle, message, rawopts) => {
-    const Opts = (rawopts) => { //Modified from https://github.com/chavyleung/scripts/blob/master/Env.js
-      if (!rawopts) return rawopts
-      if (typeof rawopts === 'string') {
-        if (isLoon) return rawopts
-        else if (isQuanX) return {
-          'open-url': rawopts
+function tool() {
+    const isSurge = typeof $httpClient != "undefined";
+    const isQuanX = typeof $task != "undefined";
+    const node = (() => {
+        if (typeof require == "function") {
+            const request = require("request");
+            return { request };
+        } else {
+            return null;
         }
-        else if (isSurge) return {
-          url: rawopts
+    })();
+    const notify = (title, subtitle, content, open_url) => {
+        if (isSurge) {
+            let opts = {};
+            if (open_url) opts["url"] = open_url;
+            if (JSON.stringify(opts) == "{}") {
+                $notification.post(title, subtitle, content);
+            } else {
+                $notification.post(title, subtitle, content, opts);
+            }
         }
-        else return undefined
-      } else if (typeof rawopts === 'object') {
+        if (isQuanX) {
+            let opts = {};
+            if (open_url) opts["open-url"] = open_url;
+            opts["media-url"] = "hhttps://raw.githubusercontent.com/Orz-3/mini/master/Color/jd.png";
+            if (JSON.stringify(opts) == "{}") {
+                $notify(title, subtitle, content);
+            } else {
+                $notify(title, subtitle, content, opts);
+            }
+        }
         if (isLoon) {
-          let openUrl = rawopts.openUrl || rawopts.url || rawopts['open-url']
-          let mediaUrl = rawopts.mediaUrl || rawopts['media-url']
-          return {
-            openUrl,
-            mediaUrl
-          }
-        } else if (isQuanX) {
-          let openUrl = rawopts['open-url'] || rawopts.url || rawopts.openUrl
-          let mediaUrl = rawopts['media-url'] || rawopts.mediaUrl
-          return {
-            'open-url': openUrl,
-            'media-url': mediaUrl
-          }
-        } else if (isSurge) {
-          let openUrl = rawopts.url || rawopts.openUrl || rawopts['open-url']
-          return {
-            url: openUrl
-          }
+            let opts = {};
+            if (open_url) opts["openUrl"] = open_url;
+            opts["mediaUrl"] = "https://raw.githubusercontent.com/Orz-3/mini/master/Color/jd.png";
+            if (JSON.stringify(opts) == "{}") {
+                $notification.post(title, subtitle, content);
+            } else {
+                $notification.post(title, subtitle, content, opts);
+            }
         }
-      } else {
-        return undefined
-      }
-    }
-    console.log(`${title}\n${subtitle}\n${message}`)
-    if (isQuanX) $notify(title, subtitle, message, Opts(rawopts))
-    if (isSurge) $notification.post(title, subtitle, message, Opts(rawopts))
-    if (isJSBox) $push.schedule({
-      title: title,
-      body: subtitle ? subtitle + "\n" + message : message
-    })
-  }
+        if (node) {
+            let content_Node = content + (open_url == undefined ? "" : `\n\n跳转链接：${open_url}`);
+            console.log(`${title}\n${subtitle}\n${content_Node}\n\n`);
+        }
+    };
     const setCache = (value, key) => {
         if (isQuanX) return $prefs.setValueForKey(value, key);
         if (isSurge) return $persistentStore.write(value, key);
@@ -561,3 +539,6 @@ Date.prototype.format = function (fmt) {
     }
     return fmt;
 };
+
+
+        if (isLoon) {
