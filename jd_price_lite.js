@@ -1,4 +1,4 @@
-*
+/*
 README：https://github.com/yichahucha/surge/tree/master
 ^https?://api\.m\.jd\.com/(client\.action|api)\?functionId=(wareBusiness|serverConfig|basicConfig|lite_wareBusiness|pingou_item)
  */
