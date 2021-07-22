@@ -8,7 +8,7 @@
  * 
  * Loon：
 [Script]	
- http-response https?:\/\/biz\.caiyunapp\.com\/(membership_rights|v2\/user),script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/CaiYun.js,requires-body=1, tag=彩云天气SVIP	
+http-response https?:\/\/biz\.caiyunapp\.com\/(membership_rights|v2\/user),script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/CaiYun.js,requires-body=1, tag=彩云天气SVIP	
  */	
  
 
