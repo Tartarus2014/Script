@@ -1,11 +1,13 @@
 /*
 京东资产变动通知脚本：jd_bean_change.js
-Modified time: 2021-06-9 15:25:41
+Modified time: 2021-06-09 15:25:41
 统计昨日京豆的变化情况，包括收入，支出，以及显示当前京豆数量,目前小问题:下单使用京豆后,退款重新购买,计算统计会出现异常
 统计红包以及过期红包
 网页查看地址 : https://bean.m.jd.com/beanDetail/index.action?resourceValue=bean
 支持京东双账号
 脚本兼容: QuantumultX, Surge, Loon, JSBox, Node.js
+================Shell================
+crontab="2 9 * * *"
 ============QuantumultX==============
 [task_local]
 #京东资产变动通知
@@ -82,11 +84,11 @@ if ($.isNode()) {
     })
 async function showMsg() {
   if ($.errorMsg) return
-  allMessage += `账号${$.index}：${$.nickName || $.UserName}\n今日收入：${$.todayIncomeBean}京豆 🐶\n昨日收入：${$.incomeBean}京豆 🐶\n昨日支出：${$.expenseBean}京豆 🐶\n当前京豆：${$.beanCount}(今日将过期${$.expirejingdou})京豆 🐶${$.message}${$.index !== cookiesArr.length ? '\n\n' : ''}`;
+  allMessage += `【京东账号${$.index}】${$.nickName || $.UserName}\n今日收入：${$.todayIncomeBean}京豆\n昨日收入：${$.incomeBean}京豆\n昨日支出：${$.expenseBean}京豆\n当前京豆：${$.beanCount}(今日过期${$.expirejingdou})${$.message}${$.index !== cookiesArr.length ? '\n\n' : ''}`;
   // if ($.isNode()) {
   //   await notify.sendNotify(`${$.name} - 账号${$.index} - ${$.nickName}`, `账号${$.index}：${$.nickName || $.UserName}\n昨日收入：${$.incomeBean}京豆 🐶\n昨日支出：${$.expenseBean}京豆 🐶\n当前京豆：${$.beanCount}京豆 🐶${$.message}`, { url: `https://bean.m.jd.com/beanDetail/index.action?resourceValue=bean` })
   // }
-  $.msg($.name, '', `账号${$.index}：${$.nickName || $.UserName}\n今日收入：${$.todayIncomeBean}京豆 🐶\n昨日收入：${$.incomeBean}京豆 🐶\n昨日支出：${$.expenseBean}京豆 🐶\n当前京豆：${$.beanCount}(今日将过期${$.expirejingdou})京豆🐶${$.message}`, {"open-url": "https://bean.m.jd.com/beanDetail/index.action?resourceValue=bean", "media-url": "https://raw.githubusercontent.com/Orz-3/mini/master/Color/jd.png"});
+  $.msg($.name, '', `账号${$.index}：${$.nickName || $.UserName}\n今日收入：${$.todayIncomeBean}京豆\n昨日收入：${$.incomeBean}京豆\n昨日支出：${$.expenseBean}京豆\n当前京豆：${$.beanCount}(今日过期${$.expirejingdou})${$.message}`, {"open-url": "https://bean.m.jd.com/beanDetail/index.action?resourceValue=bean"});
 }
 async function bean() {
   // console.log(`北京时间零点时间戳:${parseInt((Date.now() + 28800000) / 86400000) * 86400000 - 28800000}`);
@@ -330,7 +332,7 @@ function redPacket() {
             $.jdhRed = $.jdhRed.toFixed(2)
             $.balance = data.balance
             $.expiredBalance = ($.jxRedExpire + $.jsRedExpire + $.jdRedExpire).toFixed(2)
-            $.message += `\n当前总红包：${$.balance}(今日总过期${$.expiredBalance})元 🧧\n京喜红包：${$.jxRed}(今日将过期${$.jxRedExpire.toFixed(2)})元 🧧\n极速红包：${$.jsRed}(今日将过期${$.jsRedExpire.toFixed(2)})元 🧧\n京东红包：${$.jdRed}(今日将过期${$.jdRedExpire.toFixed(2)})元 🧧\n健康红包：${$.jdhRed}(今日将过期${$.jdhRedExpire.toFixed(2)})元 🧧`;
+            $.message += `\n当前红包：${$.balance}(今日过期${$.expiredBalance})元 \n京喜红包：${$.jxRed}(今日过期${$.jxRedExpire.toFixed(2)})元 \n极速红包：${$.jsRed}(今日过期${$.jsRedExpire.toFixed(2)})元 \n京东红包：${$.jdRed}(今日过期${$.jdRedExpire.toFixed(2)})元 \n健康红包：${$.jdhRed}(今日过期${$.jdhRedExpire.toFixed(2)})元 `;
           } else {
             console.log(`京东服务器返回空数据`)
           }
