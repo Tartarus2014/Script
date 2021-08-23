@@ -18,15 +18,23 @@ cron "2 9 * * *" script-path=jd_bean_change.js, tag=京东资产变动通知
 =============Surge===========
 [Script]
 京东资产变动通知 = type=cron,cronexp="2 9 * * *",wake-system=1,timeout=3600,script-path=jd_bean_change.js
-
 ============小火箭=========
 京东资产变动通知 = type=cron,script-path=jd_bean_change.js, cronexpr="2 9 * * *", timeout=3600, enable=true
  */
+
 const $ = new Env('京东资产变动通知');
 const notify = $.isNode() ? require('./sendNotify') : '';
 //Node.js用户请在jdCookie.js处填写京东ck;
 const jdCookieNode = $.isNode() ? require('./jdCookie.js') : '';
 let allMessage = '';
+const ua = $.isNode()
+  ? process.env.JD_USER_AGENT
+    ? process.env.JD_USER_AGENT
+    : require('./USER_AGENTS').USER_AGENT
+  : $.getdata('JDUA')
+  ? $.getdata('JDUA')
+  : 'jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1';
+
 //IOS等用户直接用NobyDa的jd cookie
 let cookiesArr = [],
   cookie = '';
@@ -71,6 +79,10 @@ if ($.isNode()) {
       $.message = '';
       $.balance = 0;
       $.expiredBalance = 0;
+
+      $.pet = ''; // 东东萌宠
+      $.fruit = ''; // 东东农场
+      $.egg = ''; // 京喜牧场
       await TotalBean();
       console.log(
         `\n********开始【京东账号${$.index}】${
@@ -114,29 +126,20 @@ if ($.isNode()) {
   });
 async function showMsg() {
   if ($.errorMsg) return;
-  allMessage += `【京东账号${$.index}】${$.nickName || $.UserName}\n今日收入：${
-    $.todayIncomeBean
-  }京豆\n昨日收入：${$.incomeBean}京豆\n昨日支出：${
-    $.expenseBean
-  }京豆\n当前京豆：${$.beanCount}(今日过期${$.expirejingdou})${$.message}${
-    $.index !== cookiesArr.length ? '\n\n' : ''
-  }`;
-  // if ($.isNode()) {
-  //   await notify.sendNotify(`${$.name} - 账号${$.index} - ${$.nickName}`, `账号${$.index}：${$.nickName || $.UserName}\n昨日收入：${$.incomeBean}京豆 🐶\n昨日支出：${$.expenseBean}京豆 🐶\n当前京豆：${$.beanCount}京豆 🐶${$.message}`, { url: `https://bean.m.jd.com/beanDetail/index.action?resourceValue=bean` })
-  // }
-  $.msg(
-    $.name,
-    '',
-    `账号${$.index}：${$.nickName || $.UserName}\n今日收入：${
-      $.todayIncomeBean
-    }京豆\n昨日收入：${$.incomeBean}京豆\n昨日支出：${
-      $.expenseBean
-    }京豆\n当前京豆：${$.beanCount}(今日过期${$.expirejingdou})${$.message}`,
-    {
-      'open-url':
-        'https://bean.m.jd.com/beanDetail/index.action?resourceValue=bean',
-    },
-  );
+  let notifyMsg = `
+账号${$.index}：${$.nickName || $.UserName}
+今日收入：${$.todayIncomeBean}京豆
+昨日收入：${$.incomeBean}京豆
+昨日支出：${$.expenseBean}京豆
+当前京豆：${$.beanCount}(今日过期${$.expirejingdou})${$.message}`;
+  if ($.pet) notifyMsg += `\n东东萌宠：${$.pet}`;
+  if ($.fruit) notifyMsg += `\n东东农场：${$.fruit}`;
+  if ($.egg) notifyMsg += `\n京喜牧场：${$.egg}`;
+  allMessage += notifyMsg;
+  $.msg($.name, '', notifyMsg, {
+    'open-url':
+      'https://bean.m.jd.com/beanDetail/index.action?resourceValue=bean',
+  });
 }
 async function bean() {
   // console.log(`北京时间零点时间戳:${parseInt((Date.now() + 28800000) / 86400000) * 86400000 - 28800000}`);
@@ -212,6 +215,11 @@ async function bean() {
   }
   await queryexpirejingdou(); //过期京豆
   await redPacket(); //过期红包
+  await initPetTown();
+  await initFarm();
+  await jxncEgg();
+
+  // await jdzz();
   // console.log(`昨日收入：${$.incomeBean}个京豆 🐶`);
   // console.log(`昨日支出：${$.expenseBean}个京豆 🐶`)
 }
@@ -224,13 +232,7 @@ function TotalBean() {
         Accept: '*/*',
         Connection: 'keep-alive',
         Cookie: cookie,
-        'User-Agent': $.isNode()
-          ? process.env.JD_USER_AGENT
-            ? process.env.JD_USER_AGENT
-            : require('./USER_AGENTS').USER_AGENT
-          : $.getdata('JDUA')
-          ? $.getdata('JDUA')
-          : 'jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1',
+        'User-Agent': ua,
         'Accept-Language': 'zh-cn',
         Referer: 'https://home.m.jd.com/myJd/newhome.action?sceneval=2&ufc=&',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -247,10 +249,20 @@ function TotalBean() {
               $.isLogin = false; //cookie过期
               return;
             }
-            const resData = data.data;
-            if (resData.userInfo)
-              $.nickName = resData.userInfo.baseInfo.nickname;
-            if (resData.assetInfo) $.beanCount = resData.assetInfo.beanNum;
+            if (
+              data['retcode'] === '0' &&
+              data.data &&
+              data.data.hasOwnProperty('userInfo')
+            ) {
+              $.nickName = data.data.userInfo.baseInfo.nickname;
+            }
+            if (
+              data['retcode'] === '0' &&
+              data.data &&
+              data.data['assetInfo']
+            ) {
+              $.beanCount = data.data && data.data['assetInfo']['beanNum'];
+            }
           } else {
             $.log('京东服务器返回空数据');
           }
@@ -271,13 +283,7 @@ function getJingBeanBalanceDetail(page) {
         JSON.stringify({ pageSize: '20', page: page.toString() }),
       )}&appid=ld`,
       headers: {
-        'User-Agent': $.isNode()
-          ? process.env.JD_USER_AGENT
-            ? process.env.JD_USER_AGENT
-            : require('./USER_AGENTS').USER_AGENT
-          : $.getdata('JDUA')
-          ? $.getdata('JDUA')
-          : 'jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1',
+        'User-Agent': ua,
         Host: 'api.m.jd.com',
         'Content-Type': 'application/x-www-form-urlencoded',
         Cookie: cookie,
@@ -369,13 +375,7 @@ function redPacket() {
           'https://st.jingxi.com/my/redpacket.shtml?newPg=App&jxsid=16156262265849285961',
         'Accept-Encoding': 'gzip, deflate, br',
         Cookie: cookie,
-        'User-Agent': $.isNode()
-          ? process.env.JD_USER_AGENT
-            ? process.env.JD_USER_AGENT
-            : require('./USER_AGENTS').USER_AGENT
-          : $.getdata('JDUA')
-          ? $.getdata('JDUA')
-          : 'jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1',
+        'User-Agent': ua,
       },
     };
     $.get(options, (err, resp, data) => {
@@ -457,6 +457,161 @@ function redPacket() {
     });
   });
 }
+
+function jxncEgg() {
+  const option = {
+    url: `https://m.jingxi.com/jxmc/queryservice/GetHomePageInfo?channel=7&sceneid=1001&activeid=null&activekey=null&isgift=1&isquerypicksite=1&_stk=activeid%2Cactivekey%2Cchannel%2Cisgift%2Cisquerypicksite%2Csceneid&_ste=1&h5st=20210818211830955%3B4408816258824161%3B10028%3Btk01w8db21b2130ny2eg0siAPpNQgBqjGzYfuG6IP7Z%2BAOB40BiqLQ%2Blglfi540AB%2FaQrTduHbnk61ngEeKn813gFeRD%3Bd9a0b833bf99a29ed726cbffa07ba955cc27d1ff7d2d55552878fc18fc667929&_=1629292710957&sceneval=2&g_login_type=1&g_ty=ls`,
+    headers: {
+      'User-Agent': ua,
+      Host: 'm.jingxi.com',
+      Accept: '*/*',
+      Connection: 'keep-alive',
+      'Accept-Language': 'zh-cn',
+      Referer:
+        'https://st.jingxi.com/pingou/jxmc/index.html?nativeConfig=%7B%22immersion%22%3A1%2C%22toColor%22%3A%22%23e62e0f%22%7D&;__mcwvt=sjcp&ptag=7155.9.95',
+      'Accept-Encoding': 'gzip, deflate, br',
+      Cookie: cookie,
+    },
+  };
+
+  return new Promise((resolve) => {
+    $.get(option, (err, resp, data) => {
+      try {
+        if (err) {
+          console.log(`${JSON.stringify(err)}`);
+          console.log(`${$.name} API请求失败，请检查网路重试`);
+        } else {
+          if (data) {
+            data = JSON.parse(data);
+            if (data.ret === 0) {
+              if (data.data.eggcnt) {
+                $.egg = data.data.eggcnt;
+              } else {
+                $.egg = '请手动开启活动⏰';
+              }
+            } else {
+              $.egg = '数据异常';
+            }
+            console.log(data);
+          }
+        }
+      } catch (e) {
+        $.logErr(e, resp);
+      } finally {
+        resolve(data);
+      }
+    });
+  });
+}
+
+function initPetTown() {
+  const option = {
+    url: `https://api.m.jd.com/client.action?functionId=initPetTown`,
+    headers: {
+      'User-Agent': ua,
+      Host: 'api.m.jd.com',
+      Accept: '*/*',
+      Connection: 'keep-alive',
+      'Accept-Language': 'zh-cn',
+      Referer: 'http://wq.jd.com/wxapp/pages/hd-interaction/index/index',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Cookie: cookie,
+    },
+    body: `body={}&appid=wh5&loginWQBiz=pet-town&clientVersion=9.0.4`,
+  };
+  return new Promise((resolve) => {
+    $.post(option, (err, resp, data) => {
+      try {
+        if (err) {
+          console.log(`${JSON.stringify(err)}`);
+          console.log(`${$.name} API请求失败，请检查网路重试`);
+        } else {
+          if (data) {
+            data = JSON.parse(data);
+            console.log(data);
+            if (
+              data.code === '0' &&
+              data.message === 'success' &&
+              data.resultCode === '0'
+            ) {
+              const result = data.result;
+              if (result.userStatus === 0) {
+                $.pet = '请手动开启活动⏰';
+              } else if (!result.goodsInfo.goodsName) {
+                $.pet = '你忘了选购新的商品⏰';
+              } else if (result.petStatus === 5) {
+                $.pet = `${result.goodsInfo.goodsName}已可领取⏰`;
+              } else if (result.petStatus === 6) {
+                $.pet = `${result.goodsInfo.goodsName}未继续领养新的物品⏰`;
+              } else {
+                $.pet = `领养中，进度${result.medalPercent}%，勋章${result.medalNum}/${result.goodsInfo.exchangeMedalNum}🐶`;
+              }
+            } else {
+              $.pet = '数据异常';
+            }
+          }
+        }
+      } catch (e) {
+        $.logErr(e, resp);
+      } finally {
+        resolve(data);
+      }
+    });
+  });
+}
+
+function initFarm() {
+  const option = {
+    url: `https://api.m.jd.com/client.action?functionId=initForFarm`,
+    headers: {
+      'User-Agent': ua,
+      Host: 'api.m.jd.com',
+      Accept: '*/*',
+      Connection: 'keep-alive',
+      'Accept-Language': 'zh-cn',
+      Referer: 'https://home.m.jd.com/myJd/newhome.action',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Cookie: cookie,
+    },
+    body: `body={"version":4}&appid=wh5&clientVersion=9.1.0`,
+  };
+  return new Promise((resolve) => {
+    $.post(option, (err, resp, data) => {
+      try {
+        if (err) {
+          console.log(`${JSON.stringify(err)}`);
+          console.log(`${$.name} API请求失败，请检查网路重试`);
+        } else {
+          if (data) {
+            data = JSON.parse(data);
+            const farmUserPro = data.farmUserPro;
+            if (data.code === '0' && farmUserPro.name) {
+              if (data.treeState === 2 || data.treeState === 3) {
+                $.fruit = '已可领取⏰';
+              } else if (data.treeState === 1) {
+                $.fruit = `种植中，进度${(
+                  (farmUserPro.treeEnergy / farmUserPro.treeTotalEnergy) *
+                  100
+                ).toFixed(2)}%🍒`;
+              } else if (data.treeState === 0) {
+                $.fruit = '您忘了种植新的水果⏰';
+              }
+            } else {
+              $.fruit = '数据异常';
+            }
+          }
+        }
+      } catch (e) {
+        $.logErr(e, resp);
+      } finally {
+        resolve(data);
+      }
+    });
+  });
+}
+
 function jsonParse(str) {
   if (typeof str == 'string') {
     try {
