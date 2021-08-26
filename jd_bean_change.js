@@ -18,6 +18,7 @@ cron "2 9 * * *" script-path=jd_bean_change.js, tag=京东资产变动通知
 =============Surge===========
 [Script]
 京东资产变动通知 = type=cron,cronexp="2 9 * * *",wake-system=1,timeout=3600,script-path=jd_bean_change.js
+
 ============小火箭=========
 京东资产变动通知 = type=cron,script-path=jd_bean_change.js, cronexpr="2 9 * * *", timeout=3600, enable=true
  */
@@ -27,14 +28,16 @@ const notify = $.isNode() ? require('./sendNotify') : '';
 //Node.js用户请在jdCookie.js处填写京东ck;
 const jdCookieNode = $.isNode() ? require('./jdCookie.js') : '';
 let allMessage = '';
-const ua = $.isNode()
-  ? process.env.JD_USER_AGENT
+$.ua = () => {
+  return $.isNode()
     ? process.env.JD_USER_AGENT
-    : require('./USER_AGENTS').USER_AGENT
-  : $.getdata('JDUA')
-  ? $.getdata('JDUA')
-  : 'jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1';
-
+      ? process.env.JD_USER_AGENT
+      : require('./USER_AGENTS').USER_AGENT
+    : $.getdata('JDUA')
+    ? $.getdata('JDUA')
+    : 'jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1';
+};
+const ua = $.ua;
 //IOS等用户直接用NobyDa的jd cookie
 let cookiesArr = [],
   cookie = '';
@@ -223,45 +226,36 @@ async function bean() {
   // console.log(`昨日收入：${$.incomeBean}个京豆 🐶`);
   // console.log(`昨日支出：${$.expenseBean}个京豆 🐶`)
 }
+
 function TotalBean() {
   return new Promise(async (resolve) => {
     const options = {
-      url: 'https://me-api.jd.com/user_new/info/GetJDUserInfoUnion',
+      url: `https://wxapp.m.jd.com/kwxhome/myJd/home.json?&useGuideModule=0&bizId=&brandId=&fromType=wxapp&timestamp=${Date.now()}`,
       headers: {
-        Host: 'me-api.jd.com',
-        Accept: '*/*',
-        Connection: 'keep-alive',
         Cookie: cookie,
-        'User-Agent': ua,
-        'Accept-Language': 'zh-cn',
-        Referer: 'https://home.m.jd.com/myJd/newhome.action?sceneval=2&ufc=&',
-        'Accept-Encoding': 'gzip, deflate, br',
+        'content-type': `application/x-www-form-urlencoded`,
+        Connection: `keep-alive`,
+        'Accept-Encoding': `gzip,compress,br,deflate`,
+        Referer: `https://servicewechat.com/wxa5bf5ee667d91626/161/page-frame.html`,
+        Host: `wxapp.m.jd.com`,
+        'User-Agent': `Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.10(0x18000a2a) NetType/WIFI Language/zh_CN`,
       },
     };
-    $.get(options, (err, resp, data) => {
+    $.post(options, (err, resp, data) => {
       try {
         if (err) {
           $.logErr(err);
         } else {
           if (data) {
             data = JSON.parse(data);
-            if (data['retcode'] === '1001') {
+            if (!data.user) {
               $.isLogin = false; //cookie过期
               return;
             }
-            if (
-              data['retcode'] === '0' &&
-              data.data &&
-              data.data.hasOwnProperty('userInfo')
-            ) {
-              $.nickName = data.data.userInfo.baseInfo.nickname;
-            }
-            if (
-              data['retcode'] === '0' &&
-              data.data &&
-              data.data['assetInfo']
-            ) {
-              $.beanCount = data.data && data.data['assetInfo']['beanNum'];
+            const userInfo = data.user;
+            if (userInfo) {
+              $.nickName = userInfo.petName;
+              $.beanCount = userInfo.jingBean;
             }
           } else {
             $.log('京东服务器返回空数据');
@@ -283,7 +277,7 @@ function getJingBeanBalanceDetail(page) {
         JSON.stringify({ pageSize: '20', page: page.toString() }),
       )}&appid=ld`,
       headers: {
-        'User-Agent': ua,
+        'User-Agent': ua(),
         Host: 'api.m.jd.com',
         'Content-Type': 'application/x-www-form-urlencoded',
         Cookie: cookie,
@@ -375,7 +369,7 @@ function redPacket() {
           'https://st.jingxi.com/my/redpacket.shtml?newPg=App&jxsid=16156262265849285961',
         'Accept-Encoding': 'gzip, deflate, br',
         Cookie: cookie,
-        'User-Agent': ua,
+        'User-Agent': ua(),
       },
     };
     $.get(options, (err, resp, data) => {
@@ -462,7 +456,7 @@ function jxncEgg() {
   const option = {
     url: `https://m.jingxi.com/jxmc/queryservice/GetHomePageInfo?channel=7&sceneid=1001&activeid=null&activekey=null&isgift=1&isquerypicksite=1&_stk=activeid%2Cactivekey%2Cchannel%2Cisgift%2Cisquerypicksite%2Csceneid&_ste=1&h5st=20210818211830955%3B4408816258824161%3B10028%3Btk01w8db21b2130ny2eg0siAPpNQgBqjGzYfuG6IP7Z%2BAOB40BiqLQ%2Blglfi540AB%2FaQrTduHbnk61ngEeKn813gFeRD%3Bd9a0b833bf99a29ed726cbffa07ba955cc27d1ff7d2d55552878fc18fc667929&_=1629292710957&sceneval=2&g_login_type=1&g_ty=ls`,
     headers: {
-      'User-Agent': ua,
+      'User-Agent': ua(),
       Host: 'm.jingxi.com',
       Accept: '*/*',
       Connection: 'keep-alive',
@@ -492,7 +486,6 @@ function jxncEgg() {
             } else {
               $.egg = '数据异常';
             }
-            console.log(data);
           }
         }
       } catch (e) {
@@ -508,7 +501,7 @@ function initPetTown() {
   const option = {
     url: `https://api.m.jd.com/client.action?functionId=initPetTown`,
     headers: {
-      'User-Agent': ua,
+      'User-Agent': ua(),
       Host: 'api.m.jd.com',
       Accept: '*/*',
       Connection: 'keep-alive',
@@ -529,7 +522,6 @@ function initPetTown() {
         } else {
           if (data) {
             data = JSON.parse(data);
-            console.log(data);
             if (
               data.code === '0' &&
               data.message === 'success' &&
@@ -565,7 +557,7 @@ function initFarm() {
   const option = {
     url: `https://api.m.jd.com/client.action?functionId=initForFarm`,
     headers: {
-      'User-Agent': ua,
+      'User-Agent': ua(),
       Host: 'api.m.jd.com',
       Accept: '*/*',
       Connection: 'keep-alive',
