@@ -9,15 +9,15 @@ const aqicnToken = $.getdata($.token) ||  '75e523ealc39eb5a3fbc9d50090e6c22a3bff
 // STEP 2: 参考下方配置片段，在代理工具的配置文件中添加对应的配置。注意：script-path 后应该替换为添加 apicnToken 值后的脚本路径
 /*
 	[Script]
-   http-response https://weather-data.apple.com/v2/weather/[\w-]+/-?[0-9]+\.[0-9]+/-?[0-9]+\.[0-9]+\? requires-body=true, script-path=iOS15_Weather_AQI_US.js
+http-response https://weather-data.apple.com/v2/weather/[\w-]+/-?[0-9]+\.[0-9]+/-?[0-9]+\.[0-9]+\? requires-body=true, script-path=iOS15_Weather_AQI_US.js
 
 	[MITM]
 	hostname = weather-data.apple.com
 */
 
 const AirQualityStandard = {
-	CN: 'HJ6332012.2113',
-	US: 'EPA_NowCast.2113'
+	CN: 'HJ6332012.2115',
+	US: 'EPA_NowCast.2115'
 }
 
 const AirQualityLevel = {
