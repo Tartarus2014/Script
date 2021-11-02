@@ -1,3 +1,12 @@
+/*
+Loon/Surge：
+[Script]
+http-response ^https?://api\.m\.jd\.com/client\.action\?functionId=(wareBusiness|serverConfig|basicConfig) requires-body=1,script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/jdjf_price.js, tag=京东比价
+
+[MITM]
+hostname = api.m.jd.com
+*/
+ 
 const path1 = "serverConfig";
 const path2 = "wareBusiness";
 const path2h = "wareBusiness.style";
