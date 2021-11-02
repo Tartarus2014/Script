@@ -144,7 +144,7 @@ if (url.indexOf(path2) != -1 || url.indexOf(path4) != -1) {
                 msg += detail[0];
             }
             let oprnUrl = detail[1].convertURL ? detail[1].convertURL : "";
-            $tool.notify("京东联盟", "", msg, oprnUrl);
+            $tool.notify("京东价格/返利", "", msg, oprnUrl);
         })
         .finally(() => {
             $done({ body });
