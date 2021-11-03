@@ -1,13 +1,13 @@
 /*
 Loon/Surge
 [Script]
-http-response ^https?://api\.m\.jd\.com/client\.action\?functionId=(wareBusiness|serverConfig|basicConfig) requires-body=1,script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/jdjf_price.js, tag=京东比价
+http-response ^https?://api\.m\.jd\.com/(client\.action|api)\?functionId=(wareBusiness|serverConfig|basicConfig|lite_wareBusiness|pingou_item) requires-body=1,script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/jdjf_price.js, tag=京东比价
 
 [MITM]
 hostname = api.m.jd.com
 
 QX:
-^https?://api\.m\.jd\.com/client\.action\?functionId=(wareBusiness|serverConfig|basicConfig) url script-response-body https://raw.githubusercontent.com/Tartarus2014/Script/master/jdjf_price.js
+^https?://api\.m\.jd\.com/(client\.action|api)\?functionId=(wareBusiness|serverConfig|basicConfig|lite_wareBusiness|pingou_item) url script-response-body https://raw.githubusercontent.com/Tartarus2014/Script/master/jdjf_price.js
 
 Boxjs订阅：https://raw.githubusercontent.com/githubdulong/Script/master/boxjs.json
 */
