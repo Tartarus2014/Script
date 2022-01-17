@@ -10,9 +10,7 @@ For Loon 344+ ONLY!!
 
 [script]
 
-generic script-path=stream-ui-check.js, tag=流媒体-解锁查询, img-url=checkmark.seal.system, enabled=true
-
-
+generic script-path= https://raw.githubusercontent.com/Tartarus2014/Script/master/stream-ui-check.js, tag=流媒体-解锁查询, img-url=checkmark.seal.system, enabled=true
 
 @XIAO_KOP
 
