@@ -2,7 +2,7 @@
 # EmbyPremiere
 http-response ^https?:\/\/mb3admin.com\/admin\/service\/registration\/validateDevice requires-body=1, script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/Emby.js,tag=embyUnlocked
 
-hostname= mb3admin.com
+hostname = mb3admin.com
 **/
 
 if ($request.url.indexOf('mb3admin.com/admin/service/registration/validateDevice') != -1) {
