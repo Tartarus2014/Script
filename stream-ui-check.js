@@ -376,7 +376,7 @@ function nfTest() {
                 result["Netflix"] = "<b>Netflix: </b>完整支持"+arrow+ "⟦"+flags.get(region.toUpperCase())+"⟧ 🎉"
                 resolve(region);
             } else {
-                result["Discovery"] = "<b>Netflix: </b>检测失败 ❗️";
+                result["Netflix"] = "<b>Netflix: </b>检测失败 ❗️";
                 resolve(response.status)
             }
         })
