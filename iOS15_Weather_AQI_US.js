@@ -4,7 +4,7 @@ const $ = new Env('AQI-US');
 $.token = 'hackl0us_aqi_token';
 
 // STEP 1: 前往 https://aqicn.org/data-platform/token/ 注册账户，将申请的 API Token 填入下方
-const aqicnToken = $.getdata($.token) ||  '75e523ealc39eb5a3fbc9d50090e6c22a3bff391';
+const aqicnToken = $.getdata($.token) ||  'c1bfb10e821c3bcae459597c28beb2a2cf3ce314';
 
 // STEP 2: 参考下方配置片段，在代理工具的配置文件中添加对应的配置。注意：script-path 后应该替换为添加 apicnToken 值后的脚本路径
 /*
