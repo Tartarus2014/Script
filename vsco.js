@@ -5,28 +5,32 @@ http-response ^https:\/\/api\.revenuecat\.com\/v\d\/subscribers\/\d+$  script-pa
 MitM = api.revenuecat.com
 */
 
-let obj = JSON.parse($response.body)
+const resp = {};
+const obj = JSON.parse($response.body || null);
 
-obj.subscriber.subscriptions = {
-  "com.circles.fin.premium.yearly": {
-    "billing_issues_detected_at": null,
-    "expires_date": "2030-02-18T07:52:54Z",
-    "is_sandbox": false,
-    "original_purchase_date": "2020-02-11T07:52:55Z",
-    "period_type": "normal",
-    "purchase_date": "2020-02-11T07:52:54Z",
-    "store": "app_store",
-    "unsubscribe_detected_at": null
-  }
-};
-obj.subscriber.entitlements = {
-  "membership": {
-    "expires_date": "2030-02-18T07:52:54Z",
-    "product_identifier": "com.circles.fin.premium.yearly",
-    "purchase_date": "2020-02-11T07:52:54Z"
-  }
+const product = {
+	"membership": "com.circles.fin.premium.yearly", //vsco
+	"filebox_pro": "com.premium.yearly" //filebox
+}
+const data = {
+	"expires_date": "2030-02-18T07:52:54Z",
+	"original_purchase_date": "2020-02-11T07:52:55Z",
+	"purchase_date": "2020-02-11T07:52:54Z"
 };
 
-$done({
-  body: JSON.stringify(obj)
-})
+if (obj && obj.subscriber) {
+	if (!obj.subscriber.subscriptions) {
+		obj.subscriber.subscriptions = {};
+	}
+	if (!obj.subscriber.entitlements) {
+		obj.subscriber.entitlements = {};
+	}
+	for (const i in product) {
+		obj.subscriber.subscriptions[product[i]] = data;
+		obj.subscriber.entitlements[i] = data;
+		obj.subscriber.entitlements[i].product_identifier = product[i];
+	}
+	resp.body = JSON.stringify(obj);
+}
+
+$done(resp);
