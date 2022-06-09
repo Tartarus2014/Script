@@ -1,6 +1,6 @@
 /*
 Loon/Surge
-http-response ^https?:\/\/api\.revenuecat\.com\/v\d\/subscribers\/ script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/vsco.js, requires-bpdy=true, tag=VSCO
+http-response ^https?:\/\/api\.revenuecat\.com\/v\d\/subscribers\/ script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/vsco.js, requires-body=true, tag=VSCO
 
 MitM = api.revenuecat.com
 */
