@@ -5,13 +5,23 @@ http-response ^https?:\/\/mb3admin.com\/admin\/service\/registration\/validateDe
 hostname = mb3admin.com
 **/
 
-if ($request.url.indexOf('mb3admin.com/admin/service/registration/validateDevice') != -1) {
-      if($response.status!=200){
-        //$notification.post("EmbyPremiere已激活，感谢选择普拉斯影业", "", "");
-          $done({status: 200, headers: $response.headers, body: '{"cacheExpirationDays":999,"resultCode":"GOOD","message":"Device Valid"}' })
-      }else{
-          $done({})
-      }
-  }else{
-      $done({})
+const CHECK_URL = 'mb3admin.com/admin/service/registration/validateDevice'
+
+const url = $request.url
+const isCheckUrl = (url) => url.includes(CHECK_URL)
+
+if (isCheckUrl(url) && $response.status != 200) {
+  const unlock = {
+    cacheExpirationDays: 999,
+    resultCode: 'GOOD',
+    message: 'Device Valid'
   }
+
+  const status = 200
+  const headers = $response.headers
+  const body = JSON.stringify(unlock)
+
+  $done({ status, headers, body })
+} else {
+  $done({})
+}
