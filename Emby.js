@@ -2,6 +2,9 @@
 # EmbyPremiere
 http-response ^https?:\/\/mb3admin.com\/admin\/service\/registration\/validateDevice requires-body=true, script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/Emby.js,tag=embyUnlocked
 
+emby.js = type=http-response,pattern=^https?:\/\/mb3admin.com\/admin\/service\/registration\/validateDevice,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/Tartarus2014/Script/master/Emby.js
+
+
 hostname = mb3admin.com
 **/
 
